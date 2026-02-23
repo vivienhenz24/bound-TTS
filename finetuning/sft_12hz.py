@@ -21,6 +21,7 @@ import shutil
 import torch
 from accelerate import Accelerator
 from dataset import TTSDataset
+from huggingface_hub import snapshot_download
 from qwen_tts.inference.qwen3_tts_model import Qwen3TTSModel
 from safetensors.torch import save_file
 from torch.optim import AdamW
@@ -149,9 +150,18 @@ def train():
 
         if accelerator.is_main_process:
             output_dir = os.path.join(args.output_model_path, f"checkpoint-epoch-{epoch}")
-            shutil.copytree(MODEL_PATH, output_dir, dirs_exist_ok=True)
+            if os.path.isdir(MODEL_PATH):
+                shutil.copytree(MODEL_PATH, output_dir, dirs_exist_ok=True)
+            else:
+                snapshot_download(
+                    repo_id=MODEL_PATH,
+                    local_dir=output_dir,
+                    local_dir_use_symlinks=False,
+                )
 
             input_config_file = os.path.join(MODEL_PATH, "config.json")
+            if not os.path.exists(input_config_file):
+                input_config_file = os.path.join(output_dir, "config.json")
             output_config_file = os.path.join(output_dir, "config.json")
             with open(input_config_file, 'r', encoding='utf-8') as f:
                 config_dict = json.load(f)
