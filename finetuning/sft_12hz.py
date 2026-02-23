@@ -39,9 +39,17 @@ def train():
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--num_epochs", type=int, default=3)
     parser.add_argument("--speaker_name", type=str, default="speaker_test")
+    parser.add_argument("--logging_dir", type=str, default=None)
     args = parser.parse_args()
 
-    accelerator = Accelerator(gradient_accumulation_steps=4, mixed_precision="bf16", log_with="tensorboard")
+    if args.logging_dir is None:
+        args.logging_dir = os.path.join(args.output_model_path, "tensorboard")
+    accelerator = Accelerator(
+        gradient_accumulation_steps=4,
+        mixed_precision="bf16",
+        log_with="tensorboard",
+        project_dir=args.logging_dir,
+    )
 
     MODEL_PATH = args.init_model_path
 
