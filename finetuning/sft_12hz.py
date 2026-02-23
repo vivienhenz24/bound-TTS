@@ -28,6 +28,18 @@ from torch.utils.data import DataLoader
 from transformers import AutoConfig
 
 target_speaker_embedding = None
+
+
+def _resolve_attn_impl(requested: str) -> str:
+    if requested != "auto":
+        return requested
+    try:
+        import flash_attn  # noqa: F401
+        return "flash_attention_2"
+    except Exception:
+        return "sdpa"
+
+
 def train():
     global target_speaker_embedding
 
@@ -40,6 +52,7 @@ def train():
     parser.add_argument("--num_epochs", type=int, default=3)
     parser.add_argument("--speaker_name", type=str, default="speaker_test")
     parser.add_argument("--logging_dir", type=str, default=None)
+    parser.add_argument("--attn_implementation", type=str, default="auto")
     args = parser.parse_args()
 
     if args.logging_dir is None:
@@ -52,11 +65,12 @@ def train():
     )
 
     MODEL_PATH = args.init_model_path
+    attn_impl = _resolve_attn_impl(args.attn_implementation)
 
     qwen3tts = Qwen3TTSModel.from_pretrained(
         MODEL_PATH,
         torch_dtype=torch.bfloat16,
-        attn_implementation="flash_attention_2",
+        attn_implementation=attn_impl,
     )
     config = AutoConfig.from_pretrained(MODEL_PATH)
 
