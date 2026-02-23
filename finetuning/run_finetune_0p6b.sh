@@ -32,6 +32,32 @@ log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
+install_sox_if_missing() {
+  if command -v sox >/dev/null 2>&1; then
+    return 0
+  fi
+
+  log "System sox binary not found; attempting install"
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y sox
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y sox
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y sox
+  elif command -v apk >/dev/null 2>&1; then
+    apk add --no-cache sox
+  else
+    echo "Missing 'sox' and no supported package manager found (apt/dnf/yum/apk)." >&2
+    exit 1
+  fi
+
+  if ! command -v sox >/dev/null 2>&1; then
+    echo "Failed to install system sox binary." >&2
+    exit 1
+  fi
+}
+
 if [[ "${USE_VENV}" == "1" ]]; then
   if [[ ! -d "${VENV_DIR}" ]]; then
     log "Creating virtualenv at ${VENV_DIR}"
@@ -49,6 +75,15 @@ if ! "${PYTHON_BIN}" -c "import torch" >/dev/null 2>&1; then
   log "PyTorch not found, installing torch + torchaudio"
   "${PYTHON_BIN}" -m pip install torch torchaudio
 fi
+
+# HF Hub sometimes has HF_HUB_ENABLE_HF_TRANSFER=1 set globally on pods.
+# Disable unless hf_transfer is actually installed, otherwise downloads fail.
+if [[ "${HF_HUB_ENABLE_HF_TRANSFER:-0}" == "1" ]] && ! "${PYTHON_BIN}" -c "import hf_transfer" >/dev/null 2>&1; then
+  log "HF_HUB_ENABLE_HF_TRANSFER=1 but hf_transfer is missing; disabling fast transfer"
+  export HF_HUB_ENABLE_HF_TRANSFER=0
+fi
+
+install_sox_if_missing
 
 "${PYTHON_BIN}" -m pip install -e "${REPO_ROOT}"
 "${PYTHON_BIN}" -m pip install safetensors tensorboard
