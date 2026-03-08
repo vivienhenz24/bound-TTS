@@ -19,7 +19,7 @@ OUTPUT_DIR="output"
 SPEAKER_NAME="female_speaker"
 FILTER_SPEAKER_ID="female_speaker"
 TEST_TEXT="Merhaba, bu bir ses testi cümlesidir."
-BATCH_SIZE=2
+BATCH_SIZE=16
 LR=2e-5
 EPOCHS=10
 TARGET_DBFS=-1.0
@@ -196,7 +196,7 @@ log "LR:           $LR"
 log "Epochs:       $EPOCHS"
 log "Speaker name: $SPEAKER_NAME"
 
-PYTHONPATH="finetuning:${PYTHONPATH:-}" accelerate launch finetuning/sft_12hz.py \
+PYTHONPATH="finetuning:${PYTHONPATH:-}" accelerate launch --mixed_precision bf16 finetuning/sft_12hz.py \
     --init_model_path  "$INIT_MODEL_PATH" \
     --output_model_path "$OUTPUT_DIR" \
     --train_jsonl       "$TRAIN_JSONL" \
