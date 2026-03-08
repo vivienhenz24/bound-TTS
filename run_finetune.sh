@@ -20,7 +20,7 @@ FILTER_SPEAKER_ID="female_speaker"
 TEST_TEXT="Merhaba, bu bir ses testi cümlesidir."
 BATCH_SIZE=2
 LR=2e-5
-EPOCHS=3
+EPOCHS=10
 TARGET_LUFS=-18.0
 # ──────────────────────────────────────────────────────────────────────────────
 
