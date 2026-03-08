@@ -39,6 +39,7 @@ def train():
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--num_epochs", type=int, default=3)
     parser.add_argument("--speaker_name", type=str, default="speaker_test")
+    parser.add_argument("--test_text", type=str, default="Merhaba, bu bir ses testi cümlesidir.")
     args = parser.parse_args()
 
     accelerator = Accelerator(gradient_accumulation_steps=4, mixed_precision="bf16", log_with="tensorboard")
@@ -162,6 +163,30 @@ def train():
             state_dict['talker.model.codec_embedding.weight'][3000] = target_speaker_embedding[0].detach().to(weight.device).to(weight.dtype)
             save_path = os.path.join(output_dir, "model.safetensors")
             save_file(state_dict, save_path)
+
+            # Run a quick inference test on the saved checkpoint
+            if args.test_text:
+                accelerator.print(f"Running inference test on checkpoint-epoch-{epoch}...")
+                try:
+                    import soundfile as _sf
+                    from qwen_tts import Qwen3TTSModel as _Qwen3TTSModel
+                    _tts = _Qwen3TTSModel.from_pretrained(
+                        output_dir,
+                        device_map="cuda:0",
+                        dtype=torch.bfloat16,
+                        attn_implementation="flash_attention_2",
+                    )
+                    _wavs, _sr = _tts.generate_custom_voice(
+                        text=args.test_text,
+                        speaker=args.speaker_name,
+                    )
+                    _out = os.path.join(output_dir, "test_output.wav")
+                    _sf.write(_out, _wavs[0], _sr)
+                    accelerator.print(f"Test audio saved: {_out}")
+                    del _tts
+                    torch.cuda.empty_cache()
+                except Exception as e:
+                    accelerator.print(f"Inference test failed: {e}")
 
 if __name__ == "__main__":
     train()

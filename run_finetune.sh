@@ -17,6 +17,7 @@ OUTPUT_DIR="output"
 
 SPEAKER_NAME="female_speaker"
 FILTER_SPEAKER_ID="female_speaker"
+TEST_TEXT="Merhaba, bu bir ses testi cümlesidir."
 BATCH_SIZE=2
 LR=2e-5
 EPOCHS=3
@@ -201,7 +202,8 @@ PYTHONPATH="finetuning:${PYTHONPATH:-}" accelerate launch finetuning/sft_12hz.py
     --batch_size        "$BATCH_SIZE" \
     --lr                "$LR" \
     --num_epochs        "$EPOCHS" \
-    --speaker_name      "$SPEAKER_NAME"
+    --speaker_name      "$SPEAKER_NAME" \
+    --test_text         "$TEST_TEXT"
 
 log ""
 log "============================================"
