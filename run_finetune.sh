@@ -15,7 +15,8 @@ NORM_JSONL="$DATA_DIR/train_normalized.jsonl"
 TRAIN_JSONL="$DATA_DIR/train_with_codes.jsonl"
 OUTPUT_DIR="output"
 
-SPEAKER_NAME="turkish_speaker"
+SPEAKER_NAME="female_speaker"
+FILTER_SPEAKER_ID="female_speaker"
 BATCH_SIZE=2
 LR=2e-5
 EPOCHS=3
@@ -130,6 +131,29 @@ PYEOF
 
 log "Dataset extraction complete"
 fi  # end skip check
+
+# 3b. Filter to target speaker
+FILTERED_JSONL="$DATA_DIR/train_raw_filtered.jsonl"
+if [ -f "$FILTERED_JSONL" ]; then
+    log "SKIP: $FILTERED_JSONL already exists"
+else
+    log "Filtering to speaker: $FILTER_SPEAKER_ID"
+    python3 -c "
+import json
+lines = [l for l in open('$RAW_JSONL') if json.loads(l)['speaker_id'] == '$FILTER_SPEAKER_ID']
+# Set ref_audio to the first female sample for all entries
+first = json.loads(lines[0])['audio']
+out = []
+for l in lines:
+    d = json.loads(l)
+    d['ref_audio'] = first
+    out.append(json.dumps(d, ensure_ascii=False))
+open('$FILTERED_JSONL', 'w').write('\n'.join(out) + '\n')
+print(f'Kept {len(out)} samples for $FILTER_SPEAKER_ID')
+"
+    log "Filtering complete"
+fi
+RAW_JSONL="$FILTERED_JSONL"
 
 # 4. Normalize loudness
 log_step "4/6 — Normalizing loudness to ${TARGET_LUFS} LUFS"
