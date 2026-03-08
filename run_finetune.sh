@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PYTHONUNBUFFERED=1
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 INIT_MODEL_PATH="Qwen/Qwen3-TTS-12Hz-1.7B-Base"
