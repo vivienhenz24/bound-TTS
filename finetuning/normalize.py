@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import warnings
 
 import librosa
 import numpy as np
@@ -19,7 +20,9 @@ def normalize_loudness(audio: np.ndarray, sr: int, target_lufs: float) -> np.nda
     loudness = meter.integrated_loudness(audio)
     if not np.isfinite(loudness):
         return audio
-    audio = pyln.normalize.loudness(audio, loudness, target_lufs)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        audio = pyln.normalize.loudness(audio, loudness, target_lufs)
     return np.clip(audio, -1.0, 1.0)
 
 
