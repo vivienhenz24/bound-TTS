@@ -2,41 +2,33 @@
 import argparse
 import json
 import os
-import warnings
 
 import librosa
 import numpy as np
-import pyloudnorm as pyln
 import soundfile as sf
 
-TARGET_LUFS = -18.0
+TARGET_PEAK_DBFS = -1.0
 
 
-def normalize_loudness(audio: np.ndarray, sr: int, target_lufs: float) -> np.ndarray:
-    meter = pyln.Meter(sr)
-    # Skip clips shorter than pyloudnorm's 400ms block size
-    if len(audio) < meter.block_size * sr:
+def normalize_peak(audio: np.ndarray, target_dbfs: float = TARGET_PEAK_DBFS) -> np.ndarray:
+    peak = np.max(np.abs(audio))
+    if peak < 1e-9:  # silence, skip
         return audio
-    loudness = meter.integrated_loudness(audio)
-    if not np.isfinite(loudness):
-        return audio
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", UserWarning)
-        audio = pyln.normalize.loudness(audio, loudness, target_lufs)
-    return np.clip(audio, -1.0, 1.0)
+    target_amplitude = 10 ** (target_dbfs / 20.0)
+    return audio * (target_amplitude / peak)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Normalize loudness of audio files referenced in a JSONL dataset."
+        description="Peak-normalize audio files referenced in a JSONL dataset."
     )
     parser.add_argument("--input_jsonl", type=str, required=True)
     parser.add_argument("--output_jsonl", type=str, required=True,
                         help="JSONL with updated 'audio' paths pointing to normalized files.")
     parser.add_argument("--output_audio_dir", type=str, required=True,
                         help="Directory to write normalized wav files.")
-    parser.add_argument("--target_lufs", type=float, default=TARGET_LUFS,
-                        help="Target integrated loudness in LUFS (default: -18.0)")
+    parser.add_argument("--target_dbfs", type=float, default=TARGET_PEAK_DBFS,
+                        help="Target peak level in dBFS (default: -1.0)")
     args = parser.parse_args()
 
     os.makedirs(args.output_audio_dir, exist_ok=True)
@@ -47,7 +39,7 @@ def main():
         for i, line in enumerate(lines):
             src_path = line["audio"]
             audio, sr = librosa.load(src_path, sr=None, mono=True)
-            audio = normalize_loudness(audio, sr, args.target_lufs)
+            audio = normalize_peak(audio, args.target_dbfs)
 
             basename = os.path.splitext(os.path.basename(src_path))[0]
             dst_path = os.path.join(args.output_audio_dir, f"{basename}_norm.wav")

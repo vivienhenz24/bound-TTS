@@ -21,7 +21,7 @@ TEST_TEXT="Merhaba, bu bir ses testi cümlesidir."
 BATCH_SIZE=2
 LR=2e-5
 EPOCHS=10
-TARGET_LUFS=-18.0
+TARGET_DBFS=-1.0
 # ──────────────────────────────────────────────────────────────────────────────
 
 LOG_DIR="logs"
@@ -157,7 +157,7 @@ fi
 RAW_JSONL="$FILTERED_JSONL"
 
 # 4. Normalize loudness
-log_step "4/6 — Normalizing loudness to ${TARGET_LUFS} LUFS"
+log_step "4/6 — Peak-normalizing to ${TARGET_DBFS} dBFS"
 if [ -f "$NORM_JSONL" ]; then
     log "SKIP: $NORM_JSONL already exists"
 else
@@ -167,7 +167,7 @@ else
         --input_jsonl      "$RAW_JSONL" \
         --output_jsonl     "$NORM_JSONL" \
         --output_audio_dir "$AUDIO_NORM_DIR" \
-        --target_lufs      "$TARGET_LUFS"
+        --target_dbfs      "$TARGET_DBFS"
     log "Loudness normalization complete"
 fi
 
