@@ -43,7 +43,13 @@ def train():
 
     accelerator = Accelerator(gradient_accumulation_steps=4, mixed_precision="bf16", log_with="tensorboard")
 
-    MODEL_PATH = args.init_model_path
+    from huggingface_hub import snapshot_download
+    import os as _os
+    # Resolve HF repo ID to a local path so shutil.copytree works at checkpoint time
+    if _os.path.isdir(args.init_model_path):
+        MODEL_PATH = args.init_model_path
+    else:
+        MODEL_PATH = snapshot_download(args.init_model_path)
 
     qwen3tts = Qwen3TTSModel.from_pretrained(
         MODEL_PATH,
