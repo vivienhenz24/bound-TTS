@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ─── Config ───────────────────────────────────────────────────────────────────
-INIT_MODEL_PATH="Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+INIT_MODEL_PATH="Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 TOKENIZER_MODEL_PATH="Qwen/Qwen3-TTS-Tokenizer-12Hz"
 HF_DATASET="vsqrd/turkish-tts-dataset-temp"
 DEVICE="cuda:0"
