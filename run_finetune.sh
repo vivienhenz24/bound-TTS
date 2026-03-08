@@ -59,7 +59,7 @@ pip install -q -e "$(dirname "$0")"
 pip install -q pyloudnorm datasets soundfile
 log "Core dependencies installed"
 pip install -q hf_transfer
-TMPDIR=/tmp pip install -q flash-attn --no-build-isolation \
+TMPDIR=/tmp PIP_CACHE_DIR=/tmp/pip-cache pip install -q flash-attn --no-build-isolation \
     && log "flash-attn installed" \
     || log "WARNING: flash-attn install failed — continuing without it (slower training)"
 
@@ -70,15 +70,18 @@ log "Saving audio to: $AUDIO_RAW_DIR"
 log "Output JSONL: $RAW_JSONL"
 
 python3 - <<PYEOF
-import os, json, time, soundfile as sf
-from datasets import load_dataset
+import io, os, json, time
+import soundfile as sf
+import numpy as np
+from datasets import load_dataset, Audio
 
 hf_token  = os.environ["HF_TOKEN"]
 audio_dir = "$AUDIO_RAW_DIR"
 out_jsonl = "$RAW_JSONL"
 
 print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Loading dataset from HuggingFace...")
-ds = load_dataset("$HF_DATASET", split="train", token=hf_token)
+# decode=False to get raw bytes — avoids torchcodec dependency
+ds = load_dataset("$HF_DATASET", split="train", token=hf_token).cast_column("audio", Audio(decode=False))
 print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Dataset loaded: {len(ds)} samples")
 
 ref_audio_path = None
@@ -86,12 +89,18 @@ lines = []
 t0 = time.time()
 
 for i, sample in enumerate(ds):
-    audio_data = sample["audio"]
+    audio_data = sample["audio"]   # {"bytes": ..., "path": ...}
     text       = sample["text"]
     speaker_id = sample.get("speaker_id", "speaker")
 
+    # Decode bytes with soundfile
+    raw = audio_data.get("bytes") or open(audio_data["path"], "rb").read()
+    wav, sr = sf.read(io.BytesIO(raw), dtype="float32", always_2d=False)
+    if wav.ndim > 1:
+        wav = np.mean(wav, axis=-1)
+
     wav_path = os.path.join(audio_dir, f"{i:06d}.wav")
-    sf.write(wav_path, audio_data["array"], audio_data["sampling_rate"])
+    sf.write(wav_path, wav, sr)
 
     if ref_audio_path is None:
         ref_audio_path = wav_path
