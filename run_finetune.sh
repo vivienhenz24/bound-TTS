@@ -57,6 +57,7 @@ log_step "2/6 — Installing dependencies"
 pip install -q --upgrade pip
 pip install -q -e "$(dirname "$0")"
 pip install -q pyloudnorm datasets soundfile
+apt-get install -y -q sox 2>/dev/null || log "WARNING: sox install failed"
 log "Core dependencies installed"
 pip install -q hf_transfer
 TMPDIR=/tmp PIP_CACHE_DIR=/tmp/pip-cache pip install -q flash-attn --no-build-isolation \
@@ -169,11 +170,10 @@ log "LR:           $LR"
 log "Epochs:       $EPOCHS"
 log "Speaker name: $SPEAKER_NAME"
 
-cd finetuning
-accelerate launch sft_12hz.py \
+PYTHONPATH="finetuning:${PYTHONPATH:-}" accelerate launch finetuning/sft_12hz.py \
     --init_model_path  "$INIT_MODEL_PATH" \
-    --output_model_path "../$OUTPUT_DIR" \
-    --train_jsonl       "../$TRAIN_JSONL" \
+    --output_model_path "$OUTPUT_DIR" \
+    --train_jsonl       "$TRAIN_JSONL" \
     --batch_size        "$BATCH_SIZE" \
     --lr                "$LR" \
     --num_epochs        "$EPOCHS" \
