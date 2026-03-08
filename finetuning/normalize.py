@@ -13,10 +13,14 @@ TARGET_LUFS = -18.0
 
 def normalize_loudness(audio: np.ndarray, sr: int, target_lufs: float) -> np.ndarray:
     meter = pyln.Meter(sr)
+    # Skip clips shorter than pyloudnorm's 400ms block size
+    if len(audio) < meter.block_size * sr:
+        return audio
     loudness = meter.integrated_loudness(audio)
     if not np.isfinite(loudness):
         return audio
-    return pyln.normalize.loudness(audio, loudness, target_lufs)
+    audio = pyln.normalize.loudness(audio, loudness, target_lufs)
+    return np.clip(audio, -1.0, 1.0)
 
 
 def main():
