@@ -66,6 +66,10 @@ TMPDIR=/tmp PIP_CACHE_DIR=/tmp/pip-cache pip install -q flash-attn --no-build-is
 # 3. Download dataset and convert to JSONL
 log_step "3/6 — Downloading dataset and extracting audio"
 mkdir -p "$AUDIO_RAW_DIR" "$AUDIO_NORM_DIR" "$DATA_DIR"
+
+if [ -f "$RAW_JSONL" ]; then
+    log "SKIP: $RAW_JSONL already exists"
+else
 log "Saving audio to: $AUDIO_RAW_DIR"
 log "Output JSONL: $RAW_JSONL"
 
@@ -124,28 +128,37 @@ print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Done. {len(lines)} samples writte
 PYEOF
 
 log "Dataset extraction complete"
+fi  # end skip check
 
 # 4. Normalize loudness
 log_step "4/6 — Normalizing loudness to ${TARGET_LUFS} LUFS"
-log "Input:  $RAW_JSONL"
-log "Output: $NORM_JSONL"
-python3 finetuning/normalize.py \
-    --input_jsonl      "$RAW_JSONL" \
-    --output_jsonl     "$NORM_JSONL" \
-    --output_audio_dir "$AUDIO_NORM_DIR" \
-    --target_lufs      "$TARGET_LUFS"
-log "Loudness normalization complete"
+if [ -f "$NORM_JSONL" ]; then
+    log "SKIP: $NORM_JSONL already exists"
+else
+    log "Input:  $RAW_JSONL"
+    log "Output: $NORM_JSONL"
+    python3 finetuning/normalize.py \
+        --input_jsonl      "$RAW_JSONL" \
+        --output_jsonl     "$NORM_JSONL" \
+        --output_audio_dir "$AUDIO_NORM_DIR" \
+        --target_lufs      "$TARGET_LUFS"
+    log "Loudness normalization complete"
+fi
 
 # 5. Prepare data (extract audio codes)
 log_step "5/6 — Extracting audio codes"
-log "Input:  $NORM_JSONL"
-log "Output: $TRAIN_JSONL"
-python3 finetuning/prepare_data.py \
-    --device               "$DEVICE" \
-    --tokenizer_model_path "$TOKENIZER_MODEL_PATH" \
-    --input_jsonl          "$NORM_JSONL" \
-    --output_jsonl         "$TRAIN_JSONL"
-log "Audio code extraction complete"
+if [ -f "$TRAIN_JSONL" ]; then
+    log "SKIP: $TRAIN_JSONL already exists"
+else
+    log "Input:  $NORM_JSONL"
+    log "Output: $TRAIN_JSONL"
+    python3 finetuning/prepare_data.py \
+        --device               "$DEVICE" \
+        --tokenizer_model_path "$TOKENIZER_MODEL_PATH" \
+        --input_jsonl          "$NORM_JSONL" \
+        --output_jsonl         "$TRAIN_JSONL"
+    log "Audio code extraction complete"
+fi
 
 # 6. Fine-tune
 log_step "6/6 — Fine-tuning"
