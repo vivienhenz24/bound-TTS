@@ -35,17 +35,24 @@ def main():
 
     lines = [json.loads(l.strip()) for l in open(args.input_jsonl)]
 
+    # Normalize ref_audios once (all lines share the same ref, but handle any unique ones)
+    ref_audio_cache = {}
+
+    def normalize_and_save(src_path):
+        if src_path in ref_audio_cache:
+            return ref_audio_cache[src_path]
+        audio, sr = librosa.load(src_path, sr=None, mono=True)
+        audio = normalize_peak(audio, args.target_dbfs)
+        basename = os.path.splitext(os.path.basename(src_path))[0]
+        dst_path = os.path.join(args.output_audio_dir, f"{basename}_norm.wav")
+        sf.write(dst_path, audio, sr)
+        ref_audio_cache[src_path] = dst_path
+        return dst_path
+
     with open(args.output_jsonl, "w") as out_f:
         for i, line in enumerate(lines):
-            src_path = line["audio"]
-            audio, sr = librosa.load(src_path, sr=None, mono=True)
-            audio = normalize_peak(audio, args.target_dbfs)
-
-            basename = os.path.splitext(os.path.basename(src_path))[0]
-            dst_path = os.path.join(args.output_audio_dir, f"{basename}_norm.wav")
-            sf.write(dst_path, audio, sr)
-
-            line["audio"] = dst_path
+            line["audio"] = normalize_and_save(line["audio"])
+            line["ref_audio"] = normalize_and_save(line["ref_audio"])
             out_f.write(json.dumps(line, ensure_ascii=False) + "\n")
 
             if (i + 1) % 100 == 0:
